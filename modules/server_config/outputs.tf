@@ -17,4 +17,5 @@
 output "forseti-server-config" {
   description = "The rendered Forseti server configuration file"
   value       = data.template_file.forseti_server_config.rendered
+  depends_on  = ["google_storage_bucket_object.forseti_server_config"]
 }

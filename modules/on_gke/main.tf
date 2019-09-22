@@ -43,6 +43,8 @@ locals {
   random_hash     = var.resource_name_suffix == null ? random_id.random_hash_suffix.hex : var.resource_name_suffix
   network_project = var.network_project != "" ? var.network_project : var.project_id
 
+  identity_namespace = "${var.project_id}.svc.id.goog"
+
   services_list = [
     "admin.googleapis.com",
     "appengine.googleapis.com",
@@ -83,10 +85,6 @@ resource "google_project_service" "cscc_violations" {
   project            = var.project_id
   service            = local.cscc_violations_enabled_services_list[count.index]
   disable_on_destroy = "false"
-}
-
-resource "tls_private_key" "policy_library_sync_ssh" {
-  algorithm = "RSA"
 }
 
 module "cloudsql" {
@@ -248,19 +246,6 @@ module "client_iam" {
 }
 
 //*****************************************
-//  Create Keys for Forseti server and
-//  client service accounts.
-//*****************************************
-
-resource "google_service_account_key" "server_key" {
-  service_account_id = module.server_iam.forseti-server-service-account
-}
-
-resource "google_service_account_key" "client_key" {
-  service_account_id = module.client_iam.forseti-client-service-account
-}
-
-//*****************************************
 //  Allow GKE Service Account to read GCS
 //*****************************************
 
@@ -270,13 +255,38 @@ resource "google_project_iam_member" "cluster_service_account-storage_reader" {
   member  = "serviceAccount:${var.gke_service_account}"
 }
 
+
+//*****************************************
+//  Setup the Forseti server and client
+//  service accounts for workload identity
+//*****************************************
+
+resource "google_service_account_iam_binding" "forseti_server_service_account" {
+  service_account_id = "projects/${var.project_id}/serviceAccounts/${module.server_iam.forseti-server-service-account}"
+  role               = "roles/iam.workloadIdentityUser"
+
+  members = [
+    "serviceAccount:${local.identity_namespace}[${var.k8s_forseti_namespace}/forseti-server]"
+  ]
+}
+
+resource "google_service_account_iam_binding" "forseti_client_service_account" {
+  service_account_id = "projects/${var.project_id}/serviceAccounts/${module.client_iam.forseti-client-service-account}"
+  role               = "roles/iam.workloadIdentityUser"
+
+  members = [
+    "serviceAccount:${local.identity_namespace}[${var.k8s_forseti_namespace}/forseti-client]"
+  ]
+}
+
 //*****************************************
 //  Obtain Forseti Server Configiration
 //*****************************************
 
 data "google_storage_object_signed_url" "file_url" {
-  bucket = module.server_gcs.forseti-server-storage-bucket
-  path   = "configs/forseti_conf_server.yaml"
+  bucket     = module.server_gcs.forseti-server-storage-bucket
+  path       = "configs/forseti_conf_server.yaml"
+  depends_on = [module.server_config.forseti-server-config]
 }
 
 data "http" "server_config_contents" {
@@ -306,6 +316,7 @@ resource "kubernetes_service_account" "tiller" {
   depends_on = [
     "kubernetes_namespace.forseti"
   ]
+
 }
 
 //*****************************************
@@ -342,6 +353,10 @@ resource "kubernetes_role_binding" "tiller" {
   }
 }
 
+data "local_file" "git_sync_private_key_file" {
+  filename = var.git_sync_private_key_file
+}
+
 //*****************************************
 //  Deploy Forseti on GKE via Helm
 //*****************************************
@@ -349,10 +364,13 @@ resource "kubernetes_role_binding" "tiller" {
 resource "helm_release" "forseti_security" {
   name          = "forseti"
   namespace     = var.k8s_forseti_namespace
-  repository    = var.helm_repository_url
+  repository    = "local"
   chart         = "forseti-security"
   recreate_pods = var.recreate_pods
-  depends_on    = ["kubernetes_role_binding.tiller", "kubernetes_namespace.forseti"]
+  depends_on = ["kubernetes_role_binding.tiller",
+    "kubernetes_namespace.forseti",
+    "google_service_account_iam_binding.forseti_server_service_account",
+  "google_service_account_iam_binding.forseti_client_service_account"]
 
   set {
     name  = "cloudsqlConnection"
@@ -386,12 +404,7 @@ resource "helm_release" "forseti_security" {
 
   set_sensitive {
     name  = "gitSyncPrivateSSHKey"
-    value = "${base64encode(tls_private_key.policy_library_sync_ssh.private_key_pem)}"
-  }
-
-  set {
-    name  = "gitSyncSSH"
-    value = var.git_sync_ssh
+    value = data.local_file.git_sync_private_key_file.content_base64
   }
 
   set {
@@ -417,11 +430,6 @@ resource "helm_release" "forseti_security" {
   set {
     name  = "orchestratorImageTag"
     value = var.k8s_forseti_orchestrator_image_tag
-  }
-
-  set_sensitive {
-    name  = "orchestratorKeyContents"
-    value = google_service_account_key.client_key.private_key
   }
 
   set {
@@ -459,20 +467,36 @@ resource "helm_release" "forseti_security" {
     value = "${base64encode(data.http.server_config_contents.body)}"
   }
 
-  set_sensitive {
-    name  = "serverKeyContents"
-    value = "${google_service_account_key.server_key.private_key}"
-  }
-
   set {
     name  = "serverLogLevel"
     value = var.server_log_level
   }
 
+  set {
+    name  = "serverWorkloadIdentity"
+    value = module.server_iam.forseti-server-service-account
+  }
+
+  set {
+    name  = "orchestratorWorkloadIdentity"
+    value = module.client_iam.forseti-client-service-account
+  }
+
+  set {
+    name  = "forsetiRunFrequency"
+    value = var.forseti_run_frequency
+  }
+
   values = [
     "networkPolicyIngressCidr: [${var.network_policy_ingress_cidr}]"
   ]
+
 }
+
+//*****************************
+//  Get the Ingress IP for the 
+//  forseti-server service
+//*****************************
 
 data "kubernetes_service" "forseti_server" {
   metadata {
@@ -481,3 +505,5 @@ data "kubernetes_service" "forseti_server" {
   }
   depends_on = ["helm_release.forseti_security"]
 }
+
+

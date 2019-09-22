@@ -29,11 +29,6 @@ output "forseti-server-storage-bucket" {
   value       = module.forseti.forseti-server-storage-bucket
 }
 
-output "forseti-server-git-public-key-openssh" {
-  description = "The public OpenSSH key generated to allow the Forseti Server to clone the policy library repository."
-  value       = module.forseti.forseti-server-git-public-key-openssh
-}
-
 output "forseti-load-balancer-ingress" {
   description = "A list containing ingress points for the load-balancer (only valid if load_balancer is internal or external)."
   value       = module.forseti.forseti-load-balancer-ingress

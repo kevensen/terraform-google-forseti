@@ -57,10 +57,8 @@ variable "config_validator_enabled" {
   default     = false
 }
 
-variable "git_sync_ssh" {
-  description = "Use SSH for git-sync operations"
-  type        = bool
-  default     = true
+variable "git_sync_private_key_file" {
+  description = "The file path to the private key used for an SSH connection to the hosted Git repository."
 }
 
 variable "gke_cluster_name" {

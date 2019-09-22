@@ -14,11 +14,6 @@
  * limitations under the License.
  */
 
-output "forseti-server-git-public-key-openssh" {
-  description = "The public OpenSSH key generated to allow the Forseti Server to clone the policy library repository."
-  value       = tls_private_key.policy_library_sync_ssh.public_key_openssh
-}
-
 output "forseti-server-storage-bucket" {
   description = "Forseti Server storage bucket"
   value       = module.server_gcs.forseti-server-storage-bucket

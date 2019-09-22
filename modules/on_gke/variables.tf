@@ -57,6 +57,11 @@ variable "sendgrid_api_key" {
   default     = ""
 }
 
+variable "forseti_run_frequency" {
+  description = "Schedule of running the Forseti scans"
+  default     = "0 */2 * * *"
+}
+
 variable "resource_name_suffix" {
   default     = null
   description = "A suffix which will be appended to resource names."
@@ -713,15 +718,13 @@ variable "git_sync_image_tag" {
   default     = "v3.1.2"
 }
 
-variable "git_sync_ssh" {
-  description = "Use SSH for git-sync operations"
-  type        = bool
-  default     = true
-}
-
 variable "git_sync_wait" {
   description = "The time number of seconds between git-syncs"
   default     = 30
+}
+
+variable "git_sync_private_key_file" {
+  description = "The file path to the private key used for an SSH connection to the hosted Git repository."
 }
 
 variable "gke_service_account" {
@@ -812,6 +815,12 @@ variable "recreate_pods" {
 variable "server_log_level" {
   description = "The log level of the Forseti server container."
   default     = "info"
+}
+
+variable "workload_identity" {
+  description = "Set whether or not to use workload identity"
+  type        = bool
+  default     = true
 }
 
 #-------#

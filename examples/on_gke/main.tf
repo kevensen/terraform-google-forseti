@@ -23,11 +23,12 @@ provider "google" {
 }
 
 provider "google-beta" {
-  version = "~> 2.11.0"
+  version = "~> 2.12.0"
 }
 
 locals {
   k8s_forseti_namespace = "${var.k8s_forseti_namespace}-${module.forseti.suffix}"
+  identity_namespace    = "${var.project_id}.svc.id.goog"
 }
 
 //*****************************************
@@ -101,8 +102,9 @@ module "vpc" {
 //*****************************************
 
 module "gke" {
-  source                   = "terraform-google-modules/kubernetes-engine/google"
-  version                  = "4.1.0"
+  // source                   = "terraform-google-modules/kubernetes-engine/google"
+  // version                  = "4.1.0"
+  source                   = "github.com/terraform-google-modules/terraform-google-kubernetes-engine/modules/beta-public-cluster/"
   project_id               = "${var.project_id}"
   name                     = "${var.gke_cluster_name}"
   regional                 = false
@@ -115,7 +117,8 @@ module "gke" {
   service_account          = "${var.gke_service_account}"
   network_policy           = true
   remove_default_node_pool = true
-
+  identity_namespace       = local.identity_namespace
+  node_metadata            = "GKE_METADATA_SERVER"
 
   node_pools = [{
     name               = "default-node-pool"
@@ -155,17 +158,22 @@ module "forseti" {
   project_id         = var.project_id
   org_id             = var.org_id
 
+  storage_bucket_location = var.region
+  bucket_cai_location     = var.region
+
+  cloudsql_region = var.region
+
   config_validator_enabled         = var.config_validator_enabled
-  git_sync_ssh                     = var.git_sync_ssh
+  git_sync_private_key_file        = var.git_sync_private_key_file
   gke_service_account              = module.gke.service_account
   k8s_forseti_namespace            = local.k8s_forseti_namespace
   load_balancer                    = var.load_balancer
   network_policy                   = module.gke.network_policy_enabled
   policy_library_repository_url    = var.policy_library_repository_url
   policy_library_repository_branch = var.policy_library_repository_branch
-  sendgrid_api_key                 = var.sendgrid_api_key
   forseti_email_sender             = var.forseti_email_sender
   forseti_email_recipient          = var.forseti_email_recipient
+  sendgrid_api_key                 = var.sendgrid_api_key
 
   subnetwork                  = module.vpc.subnets_names[0]
   network_project             = var.project_id
