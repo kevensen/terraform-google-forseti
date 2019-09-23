@@ -364,7 +364,7 @@ data "local_file" "git_sync_private_key_file" {
 resource "helm_release" "forseti_security" {
   name          = "forseti"
   namespace     = var.k8s_forseti_namespace
-  repository    = "local"
+  repository    = var.helm_repository_url
   chart         = "forseti-security"
   recreate_pods = var.recreate_pods
   depends_on = ["kubernetes_role_binding.tiller",

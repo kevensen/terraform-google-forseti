@@ -1,18 +1,8 @@
-# Forseti on GKE - End-to-End
-Follow this example to deploy Forseti on GKE but are starting from an empty GCP project.  In otherwords, Forseti has not been yet been deployed.
+# Forseti on-GKE
 
-This example deploys the following:
-1. A new VPC
-2. Forseti infrastructure
-   * CloudSQL Database
-   * Forseti Server GCS Bucket
-   * Forseti Client GCS Bucket
-   * Forseti Server VM
-   * Forseti Client VM
-   * Forseti Server IAM Service Account
-   * Forseti Client IAM Service Account
-3. A new GKE cluster - terraform-google-modules/kubernetes-engine/google
-4. Forseti on GKE - forseti-on-gke
+This configuration is used to install Forseti on-GKE. It includes a full Cloud Shell [tutorial](./tutorial.md).
+
+[![Open in Cloud Shell](https://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/open?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2Fforseti-security%2Fterraform-google-forseti.git&cloudshell_git_branch=master&cloudshell_working_dir=examples/on_gke&cloudshell_image=gcr.io%2Fgraphite-cloud-shell-images%2Fterraform%3Alatest&cloudshell_tutorial=.%2Ftutorial.md)
 
 ## Requirements
 

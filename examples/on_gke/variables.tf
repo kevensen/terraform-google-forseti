@@ -91,6 +91,15 @@ variable "k8s_forseti_namespace" {
   default     = "forseti"
 }
 
+#----------------------------#
+# Forseti Helm Chart Configs #
+#----------------------------#
+
+variable "helm_repository_url" {
+  description = "The Helm repository containing the 'forseti-security' Helm charts"
+  default     = "https://forseti-security-charts.storage.googleapis.com/release/"
+}
+
 variable "k8s_tiller_sa_name" {
   description = "The Kubernetes Service Account used by Tiller"
   default     = "tiller"

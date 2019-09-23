@@ -163,6 +163,7 @@ module "forseti" {
 
   cloudsql_region = var.region
 
+  helm_repository_url              = var.helm_repository_url
   config_validator_enabled         = var.config_validator_enabled
   git_sync_private_key_file        = var.git_sync_private_key_file
   gke_service_account              = module.gke.service_account
